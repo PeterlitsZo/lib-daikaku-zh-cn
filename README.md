@@ -11,7 +11,7 @@
 \usepackage{enumitem}
 \usepackage{tikz}
 
-\setlist{leftmargin=4em, itemsep=0.1em, parsep=0em,
+\setlist{leftmargin=2em, itemsep=0.1em, parsep=0em,
 	itemindent=0em, listparindent=0em,
 	labelwidth=1.5em, labelsep=1em}
 
@@ -27,7 +27,7 @@
 $1+1=$
 -------------------------------------------
 - $2$
-- $\lim_x\to 0 f(x)=x$
+- $\lim_{x\to 0} f(x)=x$
 - 应该是四
 - 以上答案都不对
 ```
@@ -36,20 +36,18 @@ $1+1=$
 ``` latex
 % ...
 \begin{document}
-	\begin{enumerte}
-		\item {%
+	\begin{enumerte}[1., leftmargin=4em]
+		\item
 			$1+1=$
-			\begin{enumerate}
+			\begin{enumerate}[A.]
 				\item $2$
 				\item $\lim_{x\to 0} f(x)=x$
 				\item 应该是四
 				\item 以上答案都不对
 			\end{enumerate}
-		}
 
-		\item {%
+		\item
 			% ...
-		}
 	\end{enumerta}
 \end{document}
 ```
