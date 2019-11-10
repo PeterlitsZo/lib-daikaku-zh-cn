@@ -1,27 +1,13 @@
 import re
 from collections import namedtuple
 
+# --- scanner ---
 def ltmd_to_token(string:str) -> list:
     str_begin_with_sym_sub = r'-+[^-\s]+|-+[^-]+.+'
     str_begin_without_sym_sub = r'[^-].*'
-    # <str> ::= <str_begin_with_sym_sub> (<newline> <str>)*
-    #        |  <str_begin_without_sym_sub> (<newline> <str>)*
-    #        |  <item_begin> (<newline> <str>)*
-    # <title> ::= <str>
-
     line = r'-+\s*'
-
     item_begin = r'-\s.*'
-    # <item> ::= <item_brgin> <newline> <str>
-    #         |  <item_begin>
-    # <items> ::= <item> <items>
-
     spaceline = r'\s*'
-
-    # <valid> ::= <title>
-    #          |  <title> <newline> <line>
-    #          |  <title> <newline> <line> <items>
-    #          |  <title> <newline> <items>
 
     result_list = []
     Token = namedtuple('Token', ['token', 'value'])
@@ -42,6 +28,7 @@ def ltmd_to_token(string:str) -> list:
     return result_list
 
 
+# --- parser ---
 def token_to_tree(token_list:list) -> tuple:
     Tree = namedtuple('Tree', ['name', 'value'])
     tree_dict = {
@@ -90,12 +77,11 @@ def token_to_tree(token_list:list) -> tuple:
                 for i_str in i:
                     node.value.append(Tree(i_str, []))
                 # ------------------------------------------------------------------------------
-                # print(f'{" "*count*6}{count}:current tree:(in {node.name})------------------------------------')
+                # print(f'{" "*count*6}{count}:current tree:(in {node.name}):')
                 # for i in node.value:
                 #     print(" "*count*6 + '-', end = '')
                 #     print(i)
                 # ------------------------------------------------------------------------------
-                print('.', end='')
                 # use the way to match it or fail
                 current_list_back_up = current_list.copy()
                 for i in range(len(node.value)):
@@ -118,14 +104,15 @@ def token_to_tree(token_list:list) -> tuple:
         return node, current_list
     
     tree, _ = get_tree(result_tree, token_list, 0)
-    print()
     return tree
 
 
+# --- latexer ---
 def tree_to_latex(tree_list: list) -> str:
     pass
 
 
+# --- mainer ---
 def ltmd_to_latex(ltmd_string:str) -> str:
     r"""
     input will like:(or something else)
@@ -153,21 +140,4 @@ def ltmd_to_latex(ltmd_string:str) -> str:
     return ltmd_latex
 
 if __name__ == '__main__':
-    string = \
-    "balabala" \
-    "- how about this?\n" \
-    "--------------------------\n" \
-    "- a\n" \
-    "- b\n" \
-    "- c\n" \
-    "- d\n"
-    print('-------------------------------------------')
-    def print_tree(tree, count):
-        if type(tree[1][0]) == str:
-            print(' ' * 4 * count, tree[0], tree[1][0])
-        else:
-            print(' ' * 4 * count, tree[0], '--------------------------')
-            for i in tree[1]:
-                print_tree(i, count + 1)
-    print(token_to_tree(ltmd_to_token(string)))
-    print_tree(token_to_tree(ltmd_to_token(string)), count=1)
+    pass
