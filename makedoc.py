@@ -3,34 +3,29 @@ from collections import namedtuple
 
 # --- scanner ---
 def ltmd_to_token(string:str) -> list:
-    str_begin_with_sym_sub = r'-+[^-\s]+|-+[^-]+.+'
-    str_begin_without_sym_sub = r'[^-].*'
-    line = r'-+\s*'
-    item_begin = r'-\s.*'
-    spaceline = r'\s*'
+    re_str = {
+        "line": r'-+\s*',
+        "item_begin": r'-\s.*',
+        "str_begin_with_sym_sub": r'-+[^-\s]+|-+[^-]+.+',
+        "str_begin_without_sym_sub": r'[^-].*',
+        "spaceline": r'\s*'
+    }
 
     result_list = []
     Token = namedtuple('Token', ['token', 'value'])
 
-    for i in string.split('\n'):
-        if re.fullmatch(line, i):
-            result_list.append(Token('line', i))
-        elif re.fullmatch(item_begin, i):
-            result_list.append(Token('item_begin', i))
-        elif re.fullmatch(str_begin_with_sym_sub, i):
-            result_list.append(Token('str_begin_with_sym_sub', i))
-        elif re.fullmatch(str_begin_without_sym_sub, i):
-            result_list.append(Token('str_begin_without_sym_sub', i))
-        elif re.fullmatch(spaceline, i):
-            result_list.append(Token('spaceline', i))
-        else:
-            result_list.append(Token('invaild', i))
+    for line in string.split('\n'):
+        for i in re_str:
+            if re.fullmatch(re_str[i], line):
+                result_list.append(Token(i, line))
+                break
+            else:
+                continue
     return result_list
 
 
 # --- parser ---
 def token_to_tree(token_list:list) -> tuple:
-    Tree = namedtuple('Tree', ['name', 'value'])
     tree_dict = {
         'singlestr': [['str_begin_without_sym_sub'],
                       ['item_begin'],
@@ -42,21 +37,27 @@ def token_to_tree(token_list:list) -> tuple:
                  ['item_begin']],
         'items': [['item', 'items'],
                   ['item']],
-        'valid': [['title', 'line', 'items'],
-                  ['title', 'line'],
-                  ['title', 'items'],
-                  ['title']],
+        'Select Part': [['title', 'line', 'items']],
+        'Fill Part': [['title', 'line']],
+        'Question Part': [['title', 'items']],
+        'Short Question Part': [['title']],
+        'part':[['Select Part'],
+                ['Fill Part'],
+                ['Question Part'],
+                ['Short Question Part']],
         'spacelines': [['spaceline', 'spacelines'],
                        ['spaceline']],
-        'singletree': [['spacelines', 'valid', 'spacelines'],
-                       ['spacelines', 'valid'],
-                       ['valid', 'spacelines'],
-                       ['valid']],
+        'singletree': [['spacelines', 'part', 'spacelines'],
+                       ['spacelines', 'part'],
+                       ['part', 'spacelines'],
+                       ['part']],
         'trees': [['singletree', 'trees'],
-                  ['singletree']]
+                  ['singletree']],
+        'doc': [['trees']]
     }
 
-    result_tree = Tree('trees', [])
+    Tree = namedtuple('Tree', ['name', 'value'])
+    result_tree = Tree('doc', [])
 
     def get_tree(node:Tree, current_list: list, count:int) -> tuple:
         count = count + 1
@@ -107,8 +108,57 @@ def token_to_tree(token_list:list) -> tuple:
     return tree
 
 
+# --- parser ---
+def tree_to_latex_tree(tree_list: tuple) -> tuple:
+    # latex_tree:
+    # doc:
+    #     - part:
+    #         - (...) title:
+    #             - strs
+    #         (there is not 'line' element)
+    #         - items:(if the title is ...)
+    #             - item
+    #             - item
+
+    # Tree = namedtuple('Tree', ['name', 'value'])
+    # --- reduce the spaceline ---
+    def reduce_node(tree_node: tuple, node_name: str) -> None:
+        if type(tree_node.value[0]) != str:
+            for sub_node_index, sub_node in enumerate(tree_node.value):
+                if sub_node.name == node_name:
+                    del tree_node.value[sub_node_index]
+                else:
+                    reduce_node(sub_node, node_name)
+
+    def down_tree(tree_node: tuple, tree_name: str, do_not_down_the_first = False) -> None:
+        if type(tree_node.value[0]) != str:
+        # if all([type(i) == str for i in tree_node.value]) == True:
+            for sub_node_index, sub_node in enumerate(tree_node.value):
+                if sub_node.name == tree_name:
+                    if not do_not_down_the_first:
+                        tree_node.value[sub_node_index: sub_node_index + 1] = sub_node.value
+                    else:
+                        do_not_down_the_first = False
+                        down_tree(sub_node, tree_name)
+                else:
+                    dndtf = do_not_down_the_first
+                    down_tree(sub_node, tree_name, do_not_down_the_first = dndtf)
+
+    reduce_node(tree_list, 'spacelines')
+    reduce_node(tree_list, 'line')
+    down_tree(tree_list, 'trees')
+    down_tree(tree_list, 'strs')
+    down_tree(tree_list, 'singlestr')
+    down_tree(tree_list, 'str_begin_without_sym_sub')
+    down_tree(tree_list, 'item_begin')
+    down_tree(tree_list, 'singletree')
+    down_tree(tree_list, 'items', do_not_down_the_first = True)
+    down_tree(tree_list, 'item')
+    down_tree(tree_list, 'part')
+    return tree_list
+
 # --- latexer ---
-def tree_to_latex(tree_list: list) -> str:
+def latex_tree_to_latex(tree_list: tuple) -> str:
     pass
 
 
@@ -136,8 +186,28 @@ def ltmd_to_latex(ltmd_string:str) -> str:
     """
     ltmd_token = ltmd_to_token(ltmd_string)
     ltmd_tree = token_to_tree(ltmd_token)
-    ltmd_latex = tree_to_latex(ltmd_tree)
+    ltmd_latex_tree = tree_to_latex_tree(ltmd_tree)
+    ltmd_latex = latex_tree_to_latex(ltmd_latex_tree)
     return ltmd_latex
 
+string = \
+r"""
+$1+1=$
+-------------------------
+- $2$
+- $\lim_{x\to 0} f(x)=x$
+- maybe 4
+- there is no corrent anwser
+  (... think more!)
+
+$1+1=$
+-------------------------
+
+how to think about '1+1=2'?
+
+tell me ...
+- 1+2=?
+- 2+2=?
+"""
 if __name__ == '__main__':
-    pass
+    print(tree_to_latex_tree(token_to_tree(ltmd_to_token(string))))
