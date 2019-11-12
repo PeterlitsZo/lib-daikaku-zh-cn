@@ -8,7 +8,7 @@ def ltmd_to_token(string:str) -> list:
         "item_begin": r'-\s.*',
         "str_begin_with_sym_sub": r'-+[^-\s]+|-+[^-]+.+',
         "str_begin_without_sym_sub": r'[^-].*',
-        "spaceline": r'\s*'
+        "space_line": r'\s*'
     }
 
     result_list = []
@@ -27,33 +27,44 @@ def ltmd_to_token(string:str) -> list:
 # --- parser ---
 def token_to_tree(token_list:list) -> tuple:
     tree_dict = {
+        'doc': [['doc_parts']],
+        'doc_parts': [['space_lines', 'doc_part', 'doc_parts'],
+                      ['space_lines', 'doc_part', 'space_lines']],
+        'doc_part': [['Select Part'],
+                     ['Fill Part'],
+                     ['Question Part'],
+                     ['Short Question Part']],
+
+        'space_lines': [['space_line', 'space_lines'],
+                        ['space_line'],
+                        []],
+
+        'Select Part': [['title', 'line', 'items']],
+        'Fill Part': [['title', 'line']],
+        'Question Part': [['title_no_items', 'items']],
+        'Short Question Part': [['title']],
+
+        'title': [['strs']],
+        'title_no_items': [['strs_no_items']],
+
+        'items': [['item', 'items'],
+                  ['item']],
+        'item': [['item_begin', 'item_ends'],
+                 ['item_begin']],
+        'item_ends': [['str_begin_without_sym_sub', 'item_ends'],
+                      ['str_begin_with_sym_sub', 'item_ends'],
+                      ['str_begin_without_sym_sub'],
+                      ['str_begin_with_sym_sub']],
+
+        'strs': [['singlestr', 'strs'],
+                 ['singlestr']],
+        'strs_no_items': [['singlestr_no_items', 'strs_no_items'],
+                          ['singlestr_no_items']],
         'singlestr': [['str_begin_without_sym_sub'],
                       ['item_begin'],
                       ['str_begin_with_sym_sub']],
-        'strs': [['singlestr', 'strs'],
-                 ['singlestr']],
-        'title': [['strs']],
-        'item': [['item_begin', 'str'],
-                 ['item_begin']],
-        'items': [['item', 'items'],
-                  ['item']],
-        'Select Part': [['title', 'line', 'items']],
-        'Fill Part': [['title', 'line']],
-        'Question Part': [['title', 'items']],
-        'Short Question Part': [['title']],
-        'part':[['Select Part'],
-                ['Fill Part'],
-                ['Question Part'],
-                ['Short Question Part']],
-        'spacelines': [['spaceline', 'spacelines'],
-                       ['spaceline']],
-        'singletree': [['spacelines', 'part', 'spacelines'],
-                       ['spacelines', 'part'],
-                       ['part', 'spacelines'],
-                       ['part']],
-        'trees': [['singletree', 'trees'],
-                  ['singletree']],
-        'doc': [['trees']]
+        'singlestr_no_items': [['str_begin_without_sym_sub'],
+                               ['str_begin_with_sym_sub']]
     }
 
     Tree = namedtuple('Tree', ['name', 'value'])
@@ -66,7 +77,11 @@ def token_to_tree(token_list:list) -> tuple:
             if current_list[0].token != node.name:
                 raise Exception('MatchError')
             else:
+                node.value.clear()
                 node.value.append(current_list[0].value)
+                # ------------------------------------------------------------------------------
+                print(" "*count*6 + ': \033[91m' + current_list[0].value + '\033[0m')
+                # ------------------------------------------------------------------------------
                 return node, current_list[1:]
 
         # if not then return a big tree
@@ -78,16 +93,14 @@ def token_to_tree(token_list:list) -> tuple:
                 for i_str in i:
                     node.value.append(Tree(i_str, []))
                 # ------------------------------------------------------------------------------
-                # print(f'{" "*count*6}{count}:current tree:(in {node.name}):')
-                # for i in node.value:
-                #     print(" "*count*6 + '-', end = '')
-                #     print(i)
+                # print(f'{" "*count*6}\033[0;31;40m{count}:current tree:(in {node.name}):\033[0m')
+                # print(" "*count*6 + f'- {", ".join([i.name for i in node.value])}')
                 # ------------------------------------------------------------------------------
                 # use the way to match it or fail
                 current_list_back_up = current_list.copy()
                 for i in range(len(node.value)):
                     try:
-                        # if match one, the len of list will -1
+                        # if match one, the len of list(current_list) will -1
                         node.value[i], current_list = get_tree(node.value[i], current_list, count)
                     except Exception as ex:
                         # failed to match it, then try another way
@@ -112,13 +125,14 @@ def token_to_tree(token_list:list) -> tuple:
 def tree_to_latex_tree(tree_list: tuple) -> tuple:
     # latex_tree:
     # doc:
-    #     - part:
-    #         - (...) title:
+    #     - (...) part:
+    #         - title:
     #             - strs
     #         (there is not 'line' element)
-    #         - items:(if the title is ...)
+    #         - items:(if the part is ...)
     #             - item
     #             - item
+    #     - ...
 
     # Tree = namedtuple('Tree', ['name', 'value'])
     # --- reduce the spaceline ---
@@ -130,10 +144,21 @@ def tree_to_latex_tree(tree_list: tuple) -> tuple:
                 else:
                     reduce_node(sub_node, node_name)
 
-    def down_tree(tree_node: tuple, tree_name: str, do_not_down_the_first = False) -> None:
+    def change_tree(tree_node: tuple, node_name: str, to_change_str: str) -> None:
+        Tree = namedtuple('Tree', ['name', 'value'])
         if type(tree_node.value[0]) != str:
-        # if all([type(i) == str for i in tree_node.value]) == True:
             for sub_node_index, sub_node in enumerate(tree_node.value):
+                if sub_node.name == node_name:
+                    tree_node.value[sub_node_index] = Tree(to_change_str, sub_node.value)
+                else:
+                    change_tree(sub_node, node_name, to_change_str)
+
+    def down_tree(tree_node: tuple, tree_name: str, do_not_down_the_first = False) -> None:
+        # temp = [type(i) != str for i in tree_node.value]
+        if type(tree_node.value) != str and True in [type(i) != str for i in tree_node.value]:
+            for sub_node_index, sub_node in enumerate(tree_node.value):
+                if type(sub_node) == str:
+                    continue
                 if sub_node.name == tree_name:
                     if not do_not_down_the_first:
                         tree_node.value[sub_node_index: sub_node_index + 1] = sub_node.value
@@ -144,17 +169,25 @@ def tree_to_latex_tree(tree_list: tuple) -> tuple:
                     dndtf = do_not_down_the_first
                     down_tree(sub_node, tree_name, do_not_down_the_first = dndtf)
 
-    reduce_node(tree_list, 'spacelines')
+    reduce_node(tree_list, 'space_lines')
     reduce_node(tree_list, 'line')
-    down_tree(tree_list, 'trees')
+
+    down_tree(tree_list, 'doc_parts')
+    down_tree(tree_list, 'doc_part')
+
     down_tree(tree_list, 'strs')
     down_tree(tree_list, 'singlestr')
     down_tree(tree_list, 'str_begin_without_sym_sub')
     down_tree(tree_list, 'item_begin')
-    down_tree(tree_list, 'singletree')
-    down_tree(tree_list, 'items', do_not_down_the_first = True)
-    down_tree(tree_list, 'item')
-    down_tree(tree_list, 'part')
+
+    down_tree(tree_list, 'item_end')
+    down_tree(tree_list, 'items')
+    down_tree(tree_list, 'item_ends')
+
+    down_tree(tree_list, 'singlestr_no_items')
+    down_tree(tree_list, 'strs_no_items')
+    change_tree(tree_list, 'title_no_items', 'title')
+
     return tree_list
 
 # --- latexer ---
@@ -210,4 +243,12 @@ tell me ...
 - 2+2=?
 """
 if __name__ == '__main__':
-    print(tree_to_latex_tree(token_to_tree(ltmd_to_token(string))))
+    i = ltmd_to_token(string)
+    print(i)
+    print('-------------------------------------------------------------')
+    i = token_to_tree(i)
+    print(i)
+    print('-------------------------------------------------------------')
+    i = tree_to_latex_tree(i)
+    print(i)
+    print('-------------------------------------------------------------')
