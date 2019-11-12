@@ -27,7 +27,7 @@ def ltmd_to_token(string:str) -> list:
 # --- parser ---
 def token_to_tree(token_list:list) -> tuple:
     tree_dict = {
-        'doc': [['doc_parts']],
+        'Doc': [['doc_parts']],
         'doc_parts': [['space_lines', 'doc_part', 'doc_parts'],
                       ['space_lines', 'doc_part', 'space_lines']],
         'doc_part': [['Select Part'],
@@ -68,7 +68,7 @@ def token_to_tree(token_list:list) -> tuple:
     }
 
     Tree = namedtuple('Tree', ['name', 'value'])
-    result_tree = Tree('doc', [])
+    result_tree = Tree('Doc', [])
 
     def get_tree(node:Tree, current_list: list, count:int) -> tuple:
         count = count + 1
@@ -80,7 +80,7 @@ def token_to_tree(token_list:list) -> tuple:
                 node.value.clear()
                 node.value.append(current_list[0].value)
                 # ------------------------------------------------------------------------------
-                print(" "*count*6 + ': \033[91m' + current_list[0].value + '\033[0m')
+                # print(" "*count*6 + ': \033[91m' + current_list[0].value + '\033[0m')
                 # ------------------------------------------------------------------------------
                 return node, current_list[1:]
 
@@ -102,7 +102,7 @@ def token_to_tree(token_list:list) -> tuple:
                     try:
                         # if match one, the len of list(current_list) will -1
                         node.value[i], current_list = get_tree(node.value[i], current_list, count)
-                    except Exception as ex:
+                    except Exception:
                         # failed to match it, then try another way
                         try_another_flag = True
                         current_list = current_list_back_up
@@ -172,27 +172,48 @@ def tree_to_latex_tree(tree_list: tuple) -> tuple:
     reduce_node(tree_list, 'space_lines')
     reduce_node(tree_list, 'line')
 
-    down_tree(tree_list, 'doc_parts')
-    down_tree(tree_list, 'doc_part')
-
-    down_tree(tree_list, 'strs')
-    down_tree(tree_list, 'singlestr')
-    down_tree(tree_list, 'str_begin_without_sym_sub')
-    down_tree(tree_list, 'item_begin')
-
-    down_tree(tree_list, 'item_end')
-    down_tree(tree_list, 'items')
-    down_tree(tree_list, 'item_ends')
-
-    down_tree(tree_list, 'singlestr_no_items')
-    down_tree(tree_list, 'strs_no_items')
+    down_tree_list = ['doc_parts', 'doc_part', 'strs', 'singlestr', 'str_begin_without_sym_sub',
+                      'item_begin', 'item_begin', 'item_end', 'items', 'item_ends', 
+                      'singlestr_no_items', 'strs_no_items']
+    for i in down_tree_list:
+        down_tree(tree_list, i)
+        
     change_tree(tree_list, 'title_no_items', 'title')
 
     return tree_list
 
 # --- latexer ---
 def latex_tree_to_latex(tree_list: tuple) -> str:
-    pass
+    result_str = '\n'
+    if tree_list.name == 'Doc':
+        result_str += r'\begin{enumerate}[1.]' + '\n'
+        for i in tree_list.value:
+            if i.name == 'Select Part':
+                for j in i.value:
+                    if j.name == 'title':
+                        result_str += ''.join(j.value) + r'\hspace*{\fill}\mbox{(~~~~~~~~~~)}' + '\n'
+                        result_str += r'\begin{enumerate}[A.]' + '\n'
+                    if j.name == 'item':
+                        result_str += '\item' + ''.join(j.value) + '\n'
+                result_str += r'\end{enumerate}' + '\n'
+            if i.name == 'Fill Part':
+                for j in i.value:
+                    result_str += ''.join(j.value) + r'\_\_\_\_\_\_\_\_' + '\n'
+            if i.name == 'Short Question Part':
+                for j in i.value:
+                    result_str += ''.join(j.value) + '\n'
+            if i.name == 'Question Part':
+                for j in i.value:
+                    if j.name == 'title':
+                        result_str += ''.join(j.value) + '\n'
+                        result_str += r'\begin{enumerate}[A.]' + '\n'
+                    if j.name == 'item':
+                        result_str += '\item' + ''.join(j.value) + '\n'
+                result_str += r'\end{enumerate}' + '\n'
+        result_str += r'\begin{enumerate}' + '\n'
+    else:
+        raise Exception('the first label should be "Doc"')
+    return result_str
 
 
 # --- mainer ---
@@ -208,13 +229,15 @@ def ltmd_to_latex(ltmd_string:str) -> str:
     |   - maybe 4
     |   - there is no corrent anwser
     and then output will be:
-    |   $1+1=$
-    |   \hspace*{\fill}\mbox{(~~~~~~~~~~)}
-    |   \begin{enumerate}[A.]
-    |       \item $2$
-    |       \item $\lim_{x\to 0} f(x)=x$
-    |       \item maybe 4
-    |       \item there is no corrent anwser
+    |   \begin{enumerate}
+    |       $1+1=$
+    |       \hspace*{\fill}\mbox{(~~~~~~~~~~)}
+    |       \begin{enumerate}[A.]
+    |           \item $2$
+    |           \item $\lim_{x\to 0} f(x)=x$
+    |           \item maybe 4
+    |           \item there is no corrent anwser
+    |       \end{enumerate}
     |   \end{enumerate}
     """
     ltmd_token = ltmd_to_token(ltmd_string)
@@ -222,6 +245,19 @@ def ltmd_to_latex(ltmd_string:str) -> str:
     ltmd_latex_tree = tree_to_latex_tree(ltmd_tree)
     ltmd_latex = latex_tree_to_latex(ltmd_latex_tree)
     return ltmd_latex
+
+
+def read_tree(tree, counter = 0) -> None:
+    if type(tree) == str:
+        print(' ' * 4 * counter, tree)
+    elif all([type(i) == str for i in tree.value]):
+        print(' ' * 4 * counter, tree.name, ': ', end='')
+        print(str.join(' \033[90m(:newline:)\033[0m ', [i for i in tree.value]))
+    else:
+        print(' ' * 4 * counter, tree.name)
+        for i in tree.value:
+            read_tree(i, counter = counter + 1)
+
 
 string = \
 r"""
@@ -243,12 +279,5 @@ tell me ...
 - 2+2=?
 """
 if __name__ == '__main__':
-    i = ltmd_to_token(string)
-    print(i)
-    print('-------------------------------------------------------------')
-    i = token_to_tree(i)
-    print(i)
-    print('-------------------------------------------------------------')
-    i = tree_to_latex_tree(i)
-    print(i)
-    print('-------------------------------------------------------------')
+    i = ltmd_to_latex(string)
+    read_tree(i)
