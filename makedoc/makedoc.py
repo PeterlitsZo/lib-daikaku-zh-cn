@@ -127,12 +127,13 @@ class ltmd_to_latex(object):
                  "\\usepackage[shortlabels]{enumitem}\n" \
                  "\\usepackage{tikz}\n" \
                  "\\usepackage[normalem]{ulem}\n" \
-                 "\\usepackage{xcolor}\n" \
-                 "\\renewcommand{\\ULthickness}{2pt}\n" \
                  "\n" \
                  "\\setlist{leftmargin=2em, itemsep=0.1em, parsep=0em,\n" \
                  "    itemindent=0em, listparindent=0em,\n" \
                  "    labelwidth=1.5em, labelsep=1em}\n" \
+                 "\n" \
+                 "\\newcommand{\\ul}{\\uline{~~~~~~~~~~~~~~~~}}\n" \
+                 "\n" \
                  "\n" \
                  "\\title{}\n" \
                  "\n" \
@@ -153,9 +154,12 @@ if __name__ == '__main__':
     open(op_file.with_suffix('.tex'), 'w', encoding='UTF-8').write(s)
 
     print(op_file)
-    subprocess.run(f"xelatex {op_file.with_suffix('.tex')}")
-    subprocess.run(f"xelatex {op_file.with_suffix('.tex')}")
+    subprocess.run(f"xelatex {op_file.with_suffix('.tex')}", cwd = op_file.parent)
+    subprocess.run(f"xelatex {op_file.with_suffix('.tex')}", cwd = op_file.parent)
 
-    suffix = ['.aux', '.log', '.tex']
+    suffix = ['.aux', '.log', 'fdb_latexmk', 'fls', 'tex']
     for i in suffix:
-        op_file.with_suffix(i).unlink()
+        try:
+            op_file.with_suffix(i).unlink()
+        except:
+            pass
