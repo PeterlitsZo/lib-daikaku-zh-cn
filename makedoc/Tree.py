@@ -1,3 +1,5 @@
+from color import tok, tok_q, imp
+
 class Tree(object):
     def __init__(self, name = '', value = []):
         self.name = name
@@ -8,14 +10,14 @@ class Tree(object):
 
     def _Tree_graph_str(self):
         if self.is_left_node():
-            value_list = ['\033[90m"\033[0m' + str_value + '\033[90m"\033[0m' for str_value in self.value]
-            value_str = str.join("\033[90m, \033[0m", value_list)
+            value_list = [tok_q + str_value + tok_q for str_value in self.value]
+            value_str = str.join(tok(', '), value_list)
             return f'- {self.name}: {value_str}'
         else:
             result = [f'- {self.name}:']
             for value_item in self.value:
                 if type(value_item) == str:
-                    result.append('    \033[90m"\033[0m' + value_item + '\033[90m"\033[0m')
+                    result.append(f'    {tok_q}{value_item}{tok_q}')
                 else:
                     result.append( '    ' + str.join('\n    ', value_item._Tree_graph_str().split('\n')) )
             return str.join('\n', result)

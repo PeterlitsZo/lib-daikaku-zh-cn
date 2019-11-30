@@ -1,12 +1,13 @@
 import re
 from Tree import Tree
+from color import imp
 
 
 class Parser(object):
     def __init__(self, tree_dict, reduce_tree_node_list):
         self.tree_dict = tree_dict
         self.reduce_tree_node_list = reduce_tree_node_list
-        self._test = False
+        self._test = True
 
     def _get_full_tree(self, node:Tree, scanner_result: list, count = 0) -> (Tree, list):
         # Tree:name:[value]
@@ -16,7 +17,7 @@ class Parser(object):
                 raise Exception('MatchError')
             else:
                 if self._test:
-                    print(" "*count*6 + ': \033[91m' + str(scanner_result[0].value) + '\033[0m')
+                    print(" "*count*4 + ': ' + imp(str(scanner_result[0].value)))
                 return scanner_result[0], scanner_result[1:]
 
         # if not then return a big tree
@@ -26,8 +27,8 @@ class Parser(object):
                 # try the way
                 node.value = [Tree(way_part) for way_part in way]
                 if self._test:
-                    print(f'{" "*count*6}\033[91m{count}: now in tree "{node.name}":\033[0m')
-                    print(" "*count*6 + f'- {", ".join([i.name for i in node.value])}')
+                    print(" "*count*4 + imp(str(count) + ":now in tree" + node.name))
+                    print(" "*count*4 + f'- {", ".join([i.name for i in node.value])}')
                 # use the way to match it or fail
                 scanner_result_back_up = scanner_result.copy()
                 for i in range(len(node.value)):
