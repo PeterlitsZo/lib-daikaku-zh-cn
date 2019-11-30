@@ -7,7 +7,7 @@ class Parser(object):
     def __init__(self, tree_dict, reduce_tree_node_list):
         self.tree_dict = tree_dict
         self.reduce_tree_node_list = reduce_tree_node_list
-        self._test = True
+        self._test = False
 
     def _get_full_tree(self, node:Tree, scanner_result: list, count = 0) -> (Tree, list):
         # Tree:name:[value]

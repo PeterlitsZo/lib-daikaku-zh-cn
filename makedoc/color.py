@@ -14,6 +14,7 @@ def print_256_color():
 # -------------------------------------------------------------------------------------------
 token_color = '#888888'
 important_color = '#ffaaaa'
+secondary_color = '#ffff88'
 
 def c(text, color):
     # meaning: color
@@ -26,6 +27,14 @@ def tok(token):
 # meaning: quote token
 tok_q = tok('"')
 
-def imp(important_text):
+def imp(*important_text):
     # meaning: important
-    return c(important_text, important_color)
+    result_text = [str(it) for it in important_text]
+    result_text = ' '.join(result_text)
+    return c(result_text, important_color)
+
+def sec(*less_important_text):
+    # meaning: less important
+    result_text = [str(lit) for lit in less_important_text]
+    result_text = ' '.join(result_text)
+    return c(result_text, secondary_color)

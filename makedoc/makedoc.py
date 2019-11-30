@@ -1,7 +1,7 @@
 from collections import namedtuple
 from Scanner import Scanner
 from Parser import Parser
-from get_Path import get_parent_dir_ls
+from get_Path import get_file_path
 import subprocess
 
 
@@ -144,8 +144,7 @@ class ltmd_to_latex(object):
         return self._get_latex()
 
 if __name__ == '__main__':
-    parent_dir_list = get_parent_dir_ls(__file__)
-    op_file = parent_dir_list[int(input('> '))]
+    op_file = get_file_path()
     f = open(op_file, 'r', encoding='UTF-8')
 
     s = f.read()
